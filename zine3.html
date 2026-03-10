@@ -1,0 +1,3012 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZineOS // Personal Web Territories</title>
+    <script src="https://unpkg.com/fflate@0.8.0/umd/index.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box;}
+        
+        :root{
+            --bg:#0a0a0a;
+            --panel:#141414;
+            --accent:#ff0000;
+            --text:#e0e0e0;
+            --paper:#fdfdfd;
+            --grid-color:#e0e0e0;
+        }
+        
+        body{
+            background:var(--bg);
+            color:var(--text);
+            font-family:'Helvetica Neue',Arial,sans-serif;
+            height:100vh;
+            overflow:hidden;
+            display:flex;
+            flex-direction:column;
+        }
+        
+        .view{display:none;height:100%;width:100%;}
+        .view.active{display:flex;}
+        
+        #library-view{
+            flex-direction:column;
+            padding:40px;
+            overflow-y:auto;
+        }
+        
+        .library-header{
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            margin-bottom:40px;
+            padding-bottom:20px;
+            border-bottom:1px solid #333;
+        }
+        
+        .library-title{
+            font-size:32px;
+            font-weight:bold;
+            letter-spacing:-1px;
+        }
+        
+        .zine-grid{
+            display:grid;
+            grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));
+            gap:30px;
+            max-width:1200px;
+        }
+        
+        .zine-card{
+            background:var(--panel);
+            border:1px solid #333;
+            border-radius:8px;
+            overflow:hidden;
+            cursor:pointer;
+            transition:all 0.3s;
+            position:relative;
+            height:320px;
+        }
+        
+        .zine-card:hover{
+            transform:translateY(-5px);
+            border-color:var(--accent);
+            box-shadow:0 10px 30px rgba(255,0,0,0.1);
+        }
+        
+        .zine-thumbnail{
+            height:240px;
+            background:#1a1a1a;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            font-size:64px;
+            overflow:hidden;
+        }
+        
+        .zine-thumbnail img{
+            width:100%;
+            height:100%;
+            object-fit:cover;
+        }
+        
+        .zine-info{
+            padding:20px;
+        }
+        
+        .zine-name{
+            font-size:18px;
+            font-weight:bold;
+            margin-bottom:5px;
+            white-space:nowrap;
+            overflow:hidden;
+            text-overflow:ellipsis;
+        }
+        
+        .zine-meta{
+            font-size:12px;
+            color:#666;
+        }
+        
+        .zine-actions{
+            position:absolute;
+            top:10px;
+            right:10px;
+            display:none;
+            gap:5px;
+        }
+        
+        .zine-card:hover .zine-actions{display:flex;}
+        
+        .icon-btn{
+            width:36px;
+            height:36px;
+            background:rgba(0,0,0,0.8);
+            border:1px solid #444;
+            color:#fff;
+            cursor:pointer;
+            border-radius:4px;
+            font-size:16px;
+        }
+        
+        .icon-btn:hover{background:var(--accent);border-color:var(--accent);}
+        
+        .new-card{
+            border:2px dashed #444;
+            background:transparent;
+            display:flex;
+            flex-direction:column;
+            align-items:center;
+            justify-content:center;
+            cursor:pointer;
+        }
+        
+        .new-card:hover{
+            border-color:var(--accent);
+            background:rgba(255,0,0,0.05);
+        }
+        
+        #editor-view{flex-direction:column;}
+        
+        .topbar{
+            height:45px;
+            background:var(--panel);
+            border-bottom:1px solid #333;
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            padding:0 20px;
+            z-index:1000;
+            flex-shrink:0;
+        }
+        
+        .btn{
+            background:transparent;
+            border:1px solid #444;
+            color:var(--text);
+            padding:8px 20px;
+            cursor:pointer;
+            font-family:inherit;
+            font-size:11px;
+            text-transform:uppercase;
+            letter-spacing:1px;
+            transition:all 0.2s;
+            margin-right:8px;
+        }
+        
+        .btn:hover{background:#222;border-color:#666;}
+        .btn.primary{background:var(--accent);color:#000;border-color:var(--accent);font-weight:bold;}
+        .btn:disabled{opacity:0.3;cursor:not-allowed;}
+        .btn.active{background:#333;border-color:var(--accent);color:var(--accent);}
+        .btn.small{padding:4px 10px;font-size:10px;}
+        .btn.danger{border-color:#ff0000;color:#ff0000;}
+        .btn.danger:hover{background:#ff0000;color:#fff;}
+        .btn.success{border-color:#00ff00;color:#00ff00;}
+        .btn.success:hover{background:#00ff00;color:#000;}
+        
+        .main{flex:1;display:flex;overflow:hidden;}
+        
+        .sidebar{
+            width:300px;
+            background:var(--panel);
+            border-right:1px solid #333;
+            overflow-y:auto;
+            padding:20px;
+            z-index:100;
+        }
+        
+        .section{margin-bottom:30px;}
+        .section-title{
+            font-size:10px;
+            text-transform:uppercase;
+            letter-spacing:2px;
+            color:#666;
+            margin-bottom:15px;
+            padding-bottom:10px;
+            border-bottom:1px solid #333;
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+        }
+        
+        .workspace{
+            flex:1;
+            overflow:auto;
+            background:#1a1a1a;
+            position:relative;
+            cursor:default;
+        }
+        
+        .canvas-container{
+            position:relative;
+            width:1200px;
+            height:1600px;
+            margin:40px auto;
+            background-color:var(--paper);
+            box-shadow:0 20px 60px rgba(0,0,0,0.8);
+            overflow:hidden;
+            background-repeat:no-repeat;
+            background-position:center;
+            background-size:cover;
+        }
+        
+        .grid-overlay{
+            position:absolute;
+            top:0;left:0;right:0;bottom:0;
+            pointer-events:none;
+            opacity:0;
+            transition:opacity 0.2s;
+            background-image:
+                linear-gradient(to right, var(--grid-color) 1px, transparent 1px),
+                linear-gradient(to bottom, var(--grid-color) 1px, transparent 1px);
+            background-size:20px 20px;
+        }
+        
+        .grid-overlay.visible{opacity:0.3;}
+        
+        .article{
+            position:absolute;
+            cursor:move;
+            user-select:none;
+            overflow:hidden;
+            background:transparent;
+            border:1px solid transparent;
+            transition:box-shadow 0.2s;
+        }
+        
+        .article:hover{border-color:rgba(255,0,0,0.3);}
+        
+        .article.selected{
+            border:1px solid var(--accent);
+            box-shadow:0 0 0 4px rgba(255,0,0,0.1), 0 10px 40px rgba(0,0,0,0.2);
+            z-index:1000 !important;
+        }
+        
+        .article.dragging{
+            opacity:0.9;
+            box-shadow:0 20px 60px rgba(0,0,0,0.4);
+            cursor:grabbing;
+        }
+        
+        .article.editing{
+            cursor:text;
+            user-select:text;
+        }
+        
+        .article.image, .article.gif{background:#000;}
+        
+        .article.image img, .article.gif img{
+            width:100%;
+            height:100%;
+            display:block;
+            pointer-events:none;
+            object-fit:cover;
+        }
+        
+        .article.image.contain img, .article.gif.contain img{object-fit:contain;}
+        .article.image.stretch img, .article.gif.stretch img{object-fit:fill;}
+        
+        .article.headline{
+            font-size:48px;
+            font-weight:bold;
+            line-height:1.1;
+            letter-spacing:-0.02em;
+            color:#000;
+        }
+        
+        .article.subhead{
+            font-size:24px;
+            font-style:italic;
+            color:#333;
+            line-height:1.3;
+        }
+        
+        .article.body{
+            font-size:16px;
+            line-height:1.6;
+            color:#222;
+            text-align:justify;
+        }
+        
+        .article.video iframe, .article.video video{
+            width:100%;
+            height:100%;
+            border:none;
+            pointer-events:none;
+        }
+        
+        .article.columns-2 .text-content{column-count:2;column-gap:40px;}
+        .article.columns-3 .text-content{column-count:3;column-gap:30px;}
+        
+        /* ITUNES STYLE AUDIO PLAYER - PRESERVED EXACTLY */
+        .article.audio{
+            background:linear-gradient(to bottom, #f5f5f5 0%, #e0e0e0 100%);
+            border-radius:8px;
+            box-shadow:0 4px 15px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.8);
+            border:1px solid #ccc;
+            overflow:hidden;
+            font-family:'Helvetica Neue', Arial, sans-serif;
+            cursor:move !important;
+        }
+        
+        .article.audio .itunes-player{
+            pointer-events:auto;
+            cursor:default;
+            height:100%;
+        }
+        
+        .itunes-player{
+            display:flex;
+            flex-direction:column;
+            height:100%;
+            padding:15px;
+        }
+        
+        .itunes-top{
+            display:flex;
+            gap:15px;
+            margin-bottom:15px;
+            pointer-events:none;
+        }
+        
+        .itunes-top > * {
+            pointer-events:auto;
+        }
+        
+        .itunes-artwork{
+            width:80px;
+            height:80px;
+            background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius:4px;
+            box-shadow:0 2px 8px rgba(0,0,0,0.2);
+            flex-shrink:0;
+            overflow:hidden;
+            position:relative;
+            cursor:pointer;
+            transition:transform 0.2s;
+        }
+        
+        .itunes-artwork:hover{transform:scale(1.05);}
+        
+        .itunes-artwork img{
+            width:100%;
+            height:100%;
+            object-fit:cover;
+        }
+        
+        .itunes-artwork .no-art{
+            width:100%;
+            height:100%;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            color:rgba(255,255,255,0.8);
+            font-size:30px;
+        }
+        
+        .itunes-info{
+            flex:1;
+            display:flex;
+            flex-direction:column;
+            justify-content:center;
+            min-width:0;
+        }
+        
+        .itunes-title{
+            font-size:16px;
+            font-weight:600;
+            color:#333;
+            margin-bottom:4px;
+            white-space:nowrap;
+            overflow:hidden;
+            text-overflow:ellipsis;
+        }
+        
+        .itunes-artist{
+            font-size:13px;
+            color:#666;
+            margin-bottom:8px;
+            white-space:nowrap;
+            overflow:hidden;
+            text-overflow:ellipsis;
+        }
+        
+        .itunes-time{
+            font-size:11px;
+            color:#999;
+            font-variant-numeric:tabular-nums;
+        }
+        
+        .itunes-controls{
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            gap:20px;
+            margin-bottom:15px;
+            pointer-events:auto;
+        }
+        
+        .itunes-btn{
+            background:none;
+            border:none;
+            cursor:pointer;
+            color:#666;
+            font-size:20px;
+            width:30px;
+            height:30px;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            border-radius:50%;
+            transition:all 0.2s;
+        }
+        
+        .itunes-btn:hover{
+            color:#333;
+            background:rgba(0,0,0,0.05);
+        }
+        
+        .itunes-btn.play{
+            width:40px;
+            height:40px;
+            background:linear-gradient(to bottom, #fff 0%, #f0f0f0 100%);
+            border:1px solid #ccc;
+            box-shadow:0 1px 3px rgba(0,0,0,0.1);
+            color:#333;
+            font-size:16px;
+        }
+        
+        .itunes-btn.play:hover{
+            background:linear-gradient(to bottom, #f8f8f8 0%, #e8e8e8 100%);
+            transform:scale(1.05);
+        }
+        
+        .itunes-btn.play:active{
+            transform:scale(0.95);
+            box-shadow:inset 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .itunes-progress-container{
+            width:100%;
+            height:20px;
+            display:flex;
+            align-items:center;
+            cursor:pointer;
+            position:relative;
+            pointer-events:auto;
+        }
+        
+        .itunes-progress-bg{
+            width:100%;
+            height:4px;
+            background:#ccc;
+            border-radius:2px;
+            overflow:hidden;
+            position:relative;
+        }
+        
+        .itunes-progress-fill{
+            height:100%;
+            background:linear-gradient(to bottom, #666 0%, #333 100%);
+            width:0%;
+            transition:width 0.1s linear;
+            border-radius:2px;
+        }
+        
+        .itunes-progress-handle{
+            position:absolute;
+            top:50%;
+            transform:translate(-50%, -50%);
+            width:12px;
+            height:12px;
+            background:linear-gradient(to bottom, #fff 0%, #e0e0e0 100%);
+            border:1px solid #999;
+            border-radius:50%;
+            box-shadow:0 1px 3px rgba(0,0,0,0.2);
+            left:0%;
+            transition:left 0.1s linear;
+        }
+        
+        .itunes-bottom{
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            margin-top:auto;
+            padding-top:10px;
+            border-top:1px solid rgba(0,0,0,0.1);
+            pointer-events:auto;
+        }
+        
+        .itunes-volume{
+            display:flex;
+            align-items:center;
+            gap:8px;
+            flex:1;
+        }
+        
+        .itunes-volume-icon{
+            color:#666;
+            font-size:14px;
+            cursor:pointer;
+        }
+        
+        .itunes-volume-slider{
+            flex:1;
+            height:4px;
+            background:#ccc;
+            border-radius:2px;
+            cursor:pointer;
+            position:relative;
+        }
+        
+        .itunes-volume-fill{
+            height:100%;
+            width:70%;
+            background:linear-gradient(to bottom, #666 0%, #333 100%);
+            border-radius:2px;
+            transition:width 0.1s;
+        }
+        
+        .handle{
+            position:absolute;
+            width:10px;
+            height:10px;
+            background:var(--accent);
+            border:2px solid #fff;
+            z-index:1001;
+            display:none;
+            border-radius:50%;
+            box-shadow:0 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .article.selected .handle{display:block;}
+        .handle.nw{top:-6px;left:-6px;cursor:nw-resize;}
+        .handle.ne{top:-6px;right:-6px;cursor:ne-resize;}
+        .handle.sw{bottom:-6px;left:-6px;cursor:sw-resize;}
+        .handle.se{bottom:-6px;right:-6px;cursor:se-resize;}
+        .handle:hover{transform:scale(1.2);}
+        
+        .text-content{
+            width:100%;
+            height:100%;
+            outline:none;
+            padding:10px;
+            overflow:auto;
+        }
+        
+        /* TEXT FORMATTING TOOLBAR - PRESERVED */
+        .format-toolbar{
+            position:absolute;
+            background:#222;
+            border:1px solid #444;
+            border-radius:6px;
+            padding:5px;
+            display:none;
+            gap:5px;
+            z-index:10000;
+            box-shadow:0 4px 12px rgba(0,0,0,0.5);
+            flex-wrap:wrap;
+            max-width:300px;
+        }
+        
+        .format-toolbar.visible{
+            display:flex;
+        }
+        
+        .format-btn{
+            background:#333;
+            border:1px solid #444;
+            color:#fff;
+            width:32px;
+            height:32px;
+            cursor:pointer;
+            border-radius:4px;
+            font-size:14px;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            transition:all 0.2s;
+        }
+        
+        .format-btn:hover{
+            background:#444;
+            border-color:var(--accent);
+        }
+        
+        .format-btn.active{
+            background:var(--accent);
+            color:#000;
+            border-color:var(--accent);
+        }
+        
+        .format-select{
+            background:#333;
+            border:1px solid #444;
+            color:#fff;
+            height:32px;
+            padding:0 8px;
+            border-radius:4px;
+            font-size:12px;
+            cursor:pointer;
+        }
+        
+        .font-item{
+            padding:8px;
+            background:#0a0a0a;
+            border:1px solid #333;
+            margin-bottom:5px;
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            font-size:12px;
+        }
+        
+        .font-item:hover{
+            background:#1a1a1a;
+            border-color:var(--accent);
+        }
+        
+        .control-group{margin-bottom:15px;}
+        .control-label{
+            font-size:10px;
+            color:#666;
+            margin-bottom:5px;
+            text-transform:uppercase;
+            display:flex;
+            justify-content:space-between;
+        }
+        
+        input[type="number"], input[type="color"], select, input[type="text"]{
+            width:100%;
+            background:#0a0a0a;
+            border:1px solid #333;
+            color:#fff;
+            padding:8px;
+            font-family:inherit;
+            font-size:12px;
+        }
+        
+        input[type="color"]{height:35px;padding:2px;}
+        
+        .hint{
+            font-size:10px;
+            color:#444;
+            margin-top:5px;
+            font-style:italic;
+        }
+        
+        .error-msg{
+            color:#ff0000;
+            font-size:10px;
+            margin-top:5px;
+        }
+        
+        .bg-preview{
+            width:100%;
+            height:100px;
+            background-color:#1a1a1a;
+            border:1px solid #333;
+            margin-bottom:10px;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            color:#666;
+            font-size:11px;
+            background-size:cover;
+            background-position:center;
+        }
+
+        /* Modal for video choice */
+        .modal{
+            position:fixed;
+            top:0;left:0;right:0;bottom:0;
+            background:rgba(0,0,0,0.8);
+            display:none;
+            align-items:center;
+            justify-content:center;
+            z-index:10000;
+        }
+        
+        .modal.active{display:flex;}
+        
+        .modal-content{
+            background:var(--panel);
+            border:1px solid #333;
+            padding:30px;
+            border-radius:8px;
+            width:400px;
+            max-width:90%;
+        }
+        
+        .modal-title{
+            font-size:18px;
+            margin-bottom:20px;
+            font-weight:bold;
+        }
+        
+        .modal-btn{
+            width:100%;
+            padding:15px;
+            margin-bottom:10px;
+            background:#222;
+            border:1px solid #444;
+            color:#fff;
+            cursor:pointer;
+            font-size:14px;
+            transition:all 0.2s;
+        }
+        
+        .modal-btn:hover{
+            background:#333;
+            border-color:var(--accent);
+        }
+        
+        .modal-close{
+            width:100%;
+            padding:10px;
+            background:transparent;
+            border:1px solid #444;
+            color:#666;
+            cursor:pointer;
+            margin-top:10px;
+        }
+
+        /* Layer styles */
+        .layer-item{
+            padding:10px;
+            background:#0a0a0a;
+            border:1px solid #333;
+            margin-bottom:5px;
+            cursor:pointer;
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            font-size:12px;
+            transition:all 0.2s;
+        }
+        
+        .layer-item:hover{
+            background:#1a1a1a;
+            border-color:#444;
+        }
+        
+        .layer-item.active{
+            border-left:3px solid var(--accent);
+            background:#1a1a1a;
+        }
+        
+        .layer-item.dragging{
+            opacity:0.5;
+            border-color:var(--accent);
+        }
+        
+        .layer-controls{
+            display:flex;
+            gap:5px;
+        }
+        
+        .layer-btn{
+            background:none;
+            border:none;
+            color:#666;
+            cursor:pointer;
+            font-size:12px;
+            padding:2px 5px;
+        }
+        
+        .layer-btn:hover{color:var(--accent);}
+    </style>
+</head>
+<body>
+
+    <!-- LIBRARY VIEW -->
+    <div id="library-view" class="view active">
+        <div class="library-header">
+            <div class="library-title">📚 Zine Library</div>
+            <div>
+                <button class="btn" onclick="app.importZine()">Import .zine</button>
+            </div>
+        </div>
+        <div class="zine-grid" id="zineGrid">
+            <div class="zine-card new-card" onclick="app.createNewZine()">
+                <div style="font-size:48px;margin-bottom:10px;">+</div>
+                <div>Create New Zine</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- VIDEO CHOICE MODAL -->
+    <div id="videoModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-title">Add Video</div>
+            <button class="modal-btn" onclick="articles.addVideoURL()">Paste Link (YouTube/URL)</button>
+            <button class="modal-btn" onclick="articles.addVideoFile()">Upload MP4 File</button>
+            <button class="modal-close" onclick="document.getElementById('videoModal').classList.remove('active')">Cancel</button>
+        </div>
+    </div>
+
+    <!-- TEXT FORMAT TOOLBAR -->
+    <div id="formatToolbar" class="format-toolbar">
+        <button class="format-btn" data-cmd="bold" title="Bold"><b>B</b></button>
+        <button class="format-btn" data-cmd="italic" title="Italic"><i>I</i></button>
+        <button class="format-btn" data-cmd="underline" title="Underline"><u>U</u></button>
+        <button class="format-btn" data-cmd="strikeThrough" title="Strikethrough"><s>S</s></button>
+        <div style="width:1px;background:#444;margin:0 5px;"></div>
+        <button class="format-btn" data-cmd="justifyLeft" title="Align Left">⬅</button>
+        <button class="format-btn" data-cmd="justifyCenter" title="Align Center">↔</button>
+        <button class="format-btn" data-cmd="justifyRight" title="Align Right">➡</button>
+        <div style="width:1px;background:#444;margin:0 5px;"></div>
+        <select class="format-select" id="fontFamilySelect" onchange="articles.setFontFamily(this.value)" style="width:120px;">
+            <option value="">Default Font</option>
+            <optgroup label="System Fonts" id="systemFontsGroup">
+                <option value="Arial">Arial</option>
+                <option value="Georgia">Georgia</option>
+                <option value="Times New Roman">Times New Roman</option>
+                <option value="Courier New">Courier New</option>
+                <option value="Verdana">Verdana</option>
+                <option value="Impact">Impact</option>
+            </optgroup>
+            <optgroup label="Custom Fonts" id="customFontsGroup"></optgroup>
+        </select>
+        <select class="format-select" id="fontSizeSelect" onchange="articles.setFontSize(this.value)" style="width:70px;">
+            <option value="12px">12px</option>
+            <option value="14px">14px</option>
+            <option value="16px">16px</option>
+            <option value="18px">18px</option>
+            <option value="24px">24px</option>
+            <option value="32px">32px</option>
+            <option value="48px">48px</option>
+            <option value="72px">72px</option>
+        </select>
+    </div>
+
+    <!-- EDITOR VIEW -->
+    <div id="editor-view" class="view">
+        <div class="topbar">
+            <div>
+                <button class="btn" onclick="app.backToLibrary()">← Library</button>
+                <span style="font-weight:bold;letter-spacing:3px;margin:0 20px;">ZINE EDITOR</span>
+                <button class="btn" id="btnPrev" onclick="zineManager.prevPage()">← PREV</button>
+                <span id="pageNum" style="margin:0 15px;color:#666;">PAGE 1/1</span>
+                <button class="btn" id="btnNext" onclick="zineManager.nextPage()">NEXT →</button>
+                <button class="btn primary" onclick="zineManager.addPage()">+ PAGE</button>
+            </div>
+            <div>
+                <button class="btn" id="snapBtn" onclick="zineManager.toggleSnap()">SNAP: OFF</button>
+                <button class="btn" id="btnUndo" onclick="zineManager.undo()">UNDO</button>
+                <button class="btn" id="btnRedo" onclick="zineManager.redo()">REDO</button>
+                <button class="btn success" onclick="app.exportZine()">EXPORT .ZINE</button>
+            </div>
+        </div>
+
+        <div class="main">
+            <div class="sidebar">
+                <div class="section">
+                    <div class="section-title">Zine Settings</div>
+                    <div class="control-group">
+                        <div class="control-label">Title</div>
+                        <input type="text" id="zineTitle" placeholder="My Zine" onchange="app.updateTitle(this.value)">
+                    </div>
+                </div>
+
+                <!-- FONTS SECTION -->
+                <div class="section">
+                    <div class="section-title">
+                        Custom Fonts
+                        <button class="btn small" onclick="fontManager.uploadFont()">+ Upload</button>
+                    </div>
+                    <div id="fontsList">
+                        <div class="hint">Upload .ttf, .otf, or .woff files</div>
+                    </div>
+                </div>
+
+                <!-- LAYERS SECTION -->
+                <div class="section">
+                    <div class="section-title">
+                        Layers
+                        <button class="btn small" onclick="layerManager.addLayer()">+ New</button>
+                    </div>
+                    <div id="layersList"></div>
+                    <div class="hint">Select a layer to add content to it. Drag layers to reorder.</div>
+                </div>
+
+                <div class="section">
+                    <div class="section-title">
+                        Page Background
+                        <button class="btn small" onclick="zineManager.uploadBackground()">+ Image</button>
+                    </div>
+                    <div id="bgPreview" class="bg-preview">No background</div>
+                    <div id="bgControls" style="display:none;">
+                        <div class="control-group">
+                            <div class="control-label">Display Mode</div>
+                            <select id="bgSize" onchange="zineManager.setBgSize(this.value)">
+                                <option value="cover">Cover (Fill Page)</option>
+                                <option value="contain">Contain (Fit Inside)</option>
+                                <option value="auto">Original Size</option>
+                            </select>
+                        </div>
+                        <button class="btn danger small" style="width:100%;margin-top:10px;" onclick="zineManager.removeBackground()">Remove</button>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <div class="section-title">Insert Content</div>
+                    <button class="btn" style="width:100%;margin-bottom:10px;" onclick="articles.add('headline')">HEADLINE</button>
+                    <button class="btn" style="width:100%;margin-bottom:10px;" onclick="articles.add('subhead')">SUBHEAD</button>
+                    <button class="btn" style="width:100%;margin-bottom:10px;" onclick="articles.add('body')">BODY TEXT</button>
+                    <button class="btn" style="width:100%;margin-bottom:10px;" onclick="articles.addImage()">IMAGE</button>
+                    <button class="btn" style="width:100%;margin-bottom:10px;" onclick="articles.addGif()">GIF</button>
+                    <button class="btn" style="width:100%;margin-bottom:10px;" onclick="articles.showVideoOptions()">VIDEO</button>
+                    <button class="btn" style="width:100%;margin-bottom:10px;" onclick="articles.addAudio()">AUDIO PLAYER</button>
+                </div>
+
+                <div class="section" id="stylePanel" style="display:none;">
+                    <div class="section-title">Style</div>
+                    
+                    <div class="control-group">
+                        <div class="control-label">Layer</div>
+                        <select id="articleLayer" onchange="articles.moveToLayer(this.value)">
+                            <option value="">Move to layer...</option>
+                        </select>
+                    </div>
+                    
+                    <div class="control-group">
+                        <div class="control-label">Type</div>
+                        <select id="typeSelect" onchange="articles.setType(this.value)">
+                            <option value="headline">Headline</option>
+                            <option value="subhead">Subhead</option>
+                            <option value="body">Body Text</option>
+                            <option value="image">Image</option>
+                            <option value="gif">GIF</option>
+                            <option value="video">Video</option>
+                            <option value="audio">Audio</option>
+                        </select>
+                    </div>
+                    
+                    <div class="control-group" id="audioControl" style="display:none;">
+                        <div class="control-label">Audio Options</div>
+                        <button class="btn small" style="width:100%;margin-bottom:5px;" onclick="articles.uploadAudioCover()">Change Cover Art</button>
+                        <button class="btn small" style="width:100%;" onclick="articles.changeAudioFile()">Change Audio File</button>
+                    </div>
+                    
+                    <div class="control-group" id="columnControl">
+                        <div class="control-label">Columns</div>
+                        <select id="columnSelect" onchange="articles.setColumns(this.value)">
+                            <option value="1">Single</option>
+                            <option value="2">2 Columns</option>
+                            <option value="3">3 Columns</option>
+                        </select>
+                    </div>
+                    
+                    <div class="control-group">
+                        <div class="control-label">Text Color</div>
+                        <input type="color" id="textColor" onchange="articles.setStyle('color',this.value)" value="#000000">
+                    </div>
+                    
+                    <div class="control-group">
+                        <div class="control-label">Background</div>
+                        <input type="color" id="bgColor" onchange="articles.setStyle('background',this.value)" value="#ffffff">
+                        <button class="btn" style="width:100%;margin-top:5px;font-size:10px;" onclick="articles.clearBackground()">Clear BG</button>
+                    </div>
+                </div>
+
+                <div class="section" id="layoutPanel" style="display:none;">
+                    <div class="section-title">Position & Size</div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                        <div class="control-group">
+                            <div class="control-label">X (px)</div>
+                            <input type="number" id="posX" onchange="articles.updateFromInput()">
+                        </div>
+                        <div class="control-group">
+                            <div class="control-label">Y (px)</div>
+                            <input type="number" id="posY" onchange="articles.updateFromInput()">
+                        </div>
+                        <div class="control-group">
+                            <div class="control-label">Width</div>
+                            <input type="number" id="posW" min="50" onchange="articles.updateFromInput()">
+                        </div>
+                        <div class="control-group">
+                            <div class="control-label">Height</div>
+                            <input type="number" id="posH" min="50" onchange="articles.updateFromInput()">
+                        </div>
+                    </div>
+                    
+                    <div id="imageControls" style="display:none;margin-top:15px;padding-top:15px;border-top:1px solid #333;">
+                        <div class="control-group">
+                            <div class="control-label">Fit Mode</div>
+                            <select id="fitMode" onchange="articles.setFitMode(this.value)">
+                                <option value="cover">Cover</option>
+                                <option value="contain">Contain</option>
+                                <option value="stretch">Stretch</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section" id="arrangePanel" style="display:none;">
+                    <div class="section-title">Arrange</div>
+                    <div style="display:flex;gap:10px;margin-bottom:10px;">
+                        <button class="btn" style="flex:1;" onclick="articles.layerUp()">UP</button>
+                        <button class="btn" style="flex:1;" onclick="articles.layerDown()">DOWN</button>
+                    </div>
+                    <button class="btn danger" style="width:100%;" onclick="articles.delete()">DELETE</button>
+                </div>
+            </div>
+
+            <div class="workspace" id="workspace">
+                <div class="canvas-container" id="canvas">
+                    <div class="grid-overlay" id="gridOverlay"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script>
+// ==========================================
+// SECURITY MODULE - Minimal addition
+// ==========================================
+const Security = {
+  purify(html) {
+    if (!html || typeof html !== 'string') return '';
+    const temp = document.createElement('div');
+    temp.textContent = html;
+    return temp.innerHTML
+      .replace(/&lt;(\/?)(b|i|u|s|strong|em|br|p|span|div|h[1-6])&gt;/g, '<$1$2>')
+      .replace(/javascript:/gi, '');
+  }
+};
+
+// ==========================================
+// RESOURCE MANAGER - Memory leak prevention only
+// ==========================================
+class ResourceManager {
+  constructor() {
+    this.urls = new Map();
+    this.activeAudio = null;
+  }
+  
+  createURL(blob, articleId) {
+    const url = URL.createObjectURL(blob);
+    if (!this.urls.has(articleId)) this.urls.set(articleId, []);
+    this.urls.get(articleId).push(url);
+    return url;
+  }
+  
+  revokeAll(articleId) {
+    const urls = this.urls.get(articleId);
+    if (urls) {
+      urls.forEach(u => URL.revokeObjectURL(u));
+      this.urls.delete(articleId);
+    }
+  }
+  
+  cleanupAudio(articleId) {
+    if (this.activeAudio === articleId) {
+      const aud = document.getElementById(`audio-${articleId}`);
+      if (aud) { aud.pause(); aud.src = ''; }
+      this.activeAudio = null;
+    }
+  }
+}
+const resources = new ResourceManager();
+
+// ==========================================
+// STATE - Original structure preserved
+// ==========================================
+const state = {
+    zines: [],
+    currentZine: null,
+    currentPage: 0,
+    selected: null,
+    snapToGrid: false,
+    history: [],
+    histStep: -1,
+    GRID_SIZE: 20,
+    layers: [{id: 'layer_1', name: 'Layer 1', visible: true}],
+    activeLayerId: 'layer_1',
+    layerCounter: 1
+};
+
+const storage = {
+    async init() {
+        // Try to migrate from localStorage to check for old data
+        const oldData = localStorage.getItem('zineos_library');
+        if (oldData) {
+            try {
+                state.zines = JSON.parse(oldData);
+                localStorage.removeItem('zineos_library');
+            } catch(e) {}
+        }
+    },
+    
+    save() {
+        try {
+            localStorage.setItem('zineos_library', JSON.stringify(state.zines));
+        } catch(e) {
+            console.warn('Storage quota exceeded');
+        }
+    },
+    
+    load() {
+        const saved = localStorage.getItem('zineos_library');
+        if (saved) state.zines = JSON.parse(saved);
+    },
+    
+    saveCurrent() {
+        if (!state.currentZine) return;
+        const idx = state.zines.findIndex(z => z.id === state.currentZine.id);
+        if (idx >= 0) state.zines[idx] = state.currentZine;
+        else state.zines.push(state.currentZine);
+        this.save();
+    }
+};
+
+const util = {
+    uid() { return 'a' + Date.now().toString(36) + Math.random().toString(36).substr(2, 5); },
+    snap(v) { return state.snapToGrid ? Math.round(v / state.GRID_SIZE) * state.GRID_SIZE : v; },
+    saveState() {
+        if (state.histStep < state.history.length - 1) state.history = state.history.slice(0, state.histStep + 1);
+        state.history.push(JSON.stringify(state.currentZine.pages));
+        if (state.history.length > 30) state.history.shift();
+        else state.histStep++;
+        updateUI();
+    }
+};
+
+function updateUI() {
+    document.getElementById('btnPrev').disabled = state.currentPage === 0;
+    document.getElementById('btnNext').disabled = state.currentPage >= (state.currentZine?.pages.length || 1) - 1;
+    document.getElementById('btnUndo').disabled = state.histStep <= 0;
+    document.getElementById('btnRedo').disabled = state.histStep >= state.history.length - 1;
+}
+
+// ==========================================
+// LAYER MANAGER - Preserved exactly
+// ==========================================
+const layerManager = {
+    dragSrcEl: null,
+    
+    init() {
+        this.renderLayers();
+    },
+    
+    renderLayers() {
+        const container = document.getElementById('layersList');
+        container.innerHTML = '';
+        const sortedLayers = [...state.layers].reverse();
+        
+        sortedLayers.forEach(layer => {
+            const div = document.createElement('div');
+            div.className = 'layer-item' + (layer.id === state.activeLayerId ? ' active' : '');
+            div.draggable = true;
+            div.dataset.layerId = layer.id;
+            
+            div.innerHTML = `
+                <span>${layer.name}</span>
+                <div class="layer-controls">
+                    <button class="layer-btn" onclick="event.stopPropagation(); layerManager.toggleVisibility('${layer.id}')">${layer.visible ? '👁' : '🚫'}</button>
+                    <button class="layer-btn" onclick="event.stopPropagation(); layerManager.deleteLayer('${layer.id}')" style="color:#ff0000;">×</button>
+                </div>
+            `;
+            
+            div.onclick = (e) => {
+                if (!e.target.closest('.layer-controls')) {
+                    this.setActiveLayer(layer.id);
+                }
+            };
+            
+            div.addEventListener('dragstart', this.handleDragStart.bind(this));
+            div.addEventListener('dragover', (e) => e.preventDefault());
+            div.addEventListener('drop', this.handleDrop.bind(this));
+            
+            container.appendChild(div);
+        });
+        
+        const select = document.getElementById('articleLayer');
+        if (select) {
+            select.innerHTML = '<option value="">Move to layer...</option>';
+            state.layers.forEach(layer => {
+                select.innerHTML += `<option value="${layer.id}">${layer.name}</option>`;
+            });
+        }
+    },
+    
+    handleDragStart(e) {
+        this.dragSrcEl = e.target;
+        e.dataTransfer.effectAllowed = 'move';
+    },
+    
+    handleDrop(e) {
+        e.preventDefault();
+        if (!this.dragSrcEl || this.dragSrcEl === e.target) return;
+        
+        const fromId = this.dragSrcEl.dataset.layerId;
+        const toId = e.target.closest('.layer-item')?.dataset.layerId;
+        if (!fromId || !toId || fromId === toId) return;
+        
+        const fromIdx = state.layers.findIndex(l => l.id === fromId);
+        const toIdx = state.layers.findIndex(l => l.id === toId);
+        
+        if (fromIdx !== -1 && toIdx !== -1) {
+            const [moved] = state.layers.splice(fromIdx, 1);
+            state.layers.splice(toIdx, 0, moved);
+            this.renderLayers();
+            zineManager.recalculateZIndexes();
+            storage.saveCurrent();
+        }
+    },
+    
+    addLayer() {
+        const name = prompt('Layer name:', `Layer ${state.layers.length + 1}`);
+        if (!name) return;
+        
+        state.layerCounter++;
+        const newLayer = {
+            id: 'layer_' + Date.now(),
+            name: name,
+            visible: true,
+            order: state.layerCounter
+        };
+        
+        state.layers.push(newLayer);
+        this.setActiveLayer(newLayer.id);
+        storage.saveCurrent();
+    },
+    
+    setActiveLayer(id) {
+        state.activeLayerId = id;
+        this.renderLayers();
+        
+        document.querySelectorAll('.article').forEach(el => {
+            const art = articles.getArticle(el.id);
+            if (art && art.layerId === id) {
+                el.style.opacity = '1';
+            } else {
+                el.style.opacity = '0.5';
+            }
+        });
+    },
+    
+    toggleVisibility(id) {
+        const layer = state.layers.find(l => l.id === id);
+        if (!layer) return;
+        
+        layer.visible = !layer.visible;
+        this.renderLayers();
+        
+        const page = state.currentZine?.pages[state.currentPage];
+        if (!page) return;
+        
+        page.articles.forEach(art => {
+            if (art.layerId === id || (!art.layerId && id === 'layer_1')) {
+                const el = document.getElementById(art.id);
+                if (el) el.style.display = layer.visible ? 'block' : 'none';
+            }
+        });
+    },
+    
+    deleteLayer(id) {
+        if (state.layers.length <= 1) {
+            alert('You must have at least one layer');
+            return;
+        }
+        if (!confirm('Delete this layer and all content in it?')) return;
+        
+        const page = state.currentZine.pages[state.currentPage];
+        page.articles = page.articles.filter(art => {
+            if (art.layerId === id || (!art.layerId && id === 'layer_1')) {
+                resources.cleanupAudio(art.id);
+                resources.revokeAll(art.id);
+                const el = document.getElementById(art.id);
+                if (el) el.remove();
+                return false;
+            }
+            return true;
+        });
+        
+        state.layers = state.layers.filter(l => l.id !== id);
+        if (state.activeLayerId === id) {
+            state.activeLayerId = state.layers[0].id;
+        }
+        
+        this.renderLayers();
+        zineManager.recalculateZIndexes();
+        storage.saveCurrent();
+    },
+    
+    getLayerZIndex(layerId) {
+        const index = state.layers.findIndex(l => l.id === layerId);
+        return (index + 1) * 100;
+    }
+};
+
+// ==========================================
+// FONT MANAGER - Preserved exactly
+// ==========================================
+const fontManager = {
+    init() {
+        this.renderFontList();
+    },
+    
+    uploadFont() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.ttf,.otf,.woff,.woff2';
+        input.onchange = (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const fontName = file.name.replace(/\.[^/.]+$/, '');
+                const fontId = 'font_' + util.uid();
+                const format = this.getFontFormat(file.name);
+                
+                if (!state.currentZine.fonts) state.currentZine.fonts = [];
+                state.currentZine.fonts.push({
+                    id: fontId,
+                    name: fontName,
+                    dataUrl: ev.target.result,
+                    format: format
+                });
+                
+                this.injectFont(fontId, ev.target.result, format);
+                this.renderFontList();
+                this.updateFontSelects();
+                storage.saveCurrent();
+            };
+            reader.readAsDataURL(file);
+        };
+        input.click();
+    },
+    
+    getFontFormat(filename) {
+        const ext = filename.split('.').pop().toLowerCase();
+        const map = {ttf: 'truetype', otf: 'opentype', woff: 'woff', woff2: 'woff2'};
+        return map[ext] || 'truetype';
+    },
+    
+    injectFont(id, dataUrl, format) {
+        const styleId = 'style_' + id;
+        if (document.getElementById(styleId)) return;
+        
+        const style = document.createElement('style');
+        style.id = styleId;
+        style.textContent = `
+            @font-face {
+                font-family: '${id}';
+                src: url('${dataUrl}') format('${format}');
+                font-display: swap;
+            }
+        `;
+        document.head.appendChild(style);
+    },
+    
+    loadFontsForZine() {
+        document.querySelectorAll('style[id^="style_font_"]').forEach(el => el.remove());
+        if (!state.currentZine.fonts) return;
+        
+        state.currentZine.fonts.forEach(font => {
+            this.injectFont(font.id, font.dataUrl, font.format);
+        });
+        this.renderFontList();
+        this.updateFontSelects();
+    },
+    
+    renderFontList() {
+        const container = document.getElementById('fontsList');
+        if (!state.currentZine || !state.currentZine.fonts || state.currentZine.fonts.length === 0) {
+            container.innerHTML = '<div class="hint">Upload .ttf, .otf, or .woff files</div>';
+            return;
+        }
+        
+        container.innerHTML = '';
+        state.currentZine.fonts.forEach(font => {
+            const div = document.createElement('div');
+            div.className = 'font-item';
+            div.style.fontFamily = font.id;
+            div.innerHTML = `
+                <span>${font.name}</span>
+                <button class="layer-btn" onclick="fontManager.deleteFont('${font.id}')" style="color:#ff0000;">×</button>
+            `;
+            container.appendChild(div);
+        });
+    },
+    
+    updateFontSelects() {
+        const group = document.getElementById('customFontsGroup');
+        group.innerHTML = '';
+        if (state.currentZine && state.currentZine.fonts) {
+            state.currentZine.fonts.forEach(font => {
+                const option = document.createElement('option');
+                option.value = font.id;
+                option.textContent = font.name;
+                option.style.fontFamily = font.id;
+                group.appendChild(option);
+            });
+        }
+    },
+    
+    deleteFont(id) {
+        if (!confirm('Delete this font?')) return;
+        
+        state.currentZine.fonts = state.currentZine.fonts.filter(f => f.id !== id);
+        const styleEl = document.getElementById('style_' + id);
+        if (styleEl) styleEl.remove();
+        
+        state.currentZine.pages.forEach(page => {
+            page.articles.forEach(art => {
+                if (art.styles && art.styles.fontFamily === id) {
+                    delete art.styles.fontFamily;
+                }
+            });
+        });
+        
+        this.renderFontList();
+        this.updateFontSelects();
+        zineManager.render();
+        storage.saveCurrent();
+    }
+};
+
+// ==========================================
+// ZINE MANAGER - Preserved exactly
+// ==========================================
+const zineManager = {
+    init() {
+        document.getElementById('canvas').addEventListener('mousedown', (e) => {
+            if (e.target.id === 'canvas' || e.target.id === 'gridOverlay') {
+                articles.deselectAll();
+            }
+        });
+        
+        document.addEventListener('keydown', (e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
+                e.preventDefault();
+                this.undo();
+            }
+            if ((e.key === 'Delete' || e.key === 'Backspace') && state.selected && !e.target.isContentEditable) {
+                e.preventDefault();
+                articles.delete();
+            }
+        });
+    },
+    
+    load(zine) {
+        state.currentZine = zine;
+        state.currentPage = 0;
+        state.history = [JSON.stringify(zine.pages)];
+        state.histStep = 0;
+        
+        state.layers = zine.layers || [{id: 'layer_1', name: 'Layer 1', visible: true}];
+        state.activeLayerId = state.layers[0].id;
+        
+        fontManager.loadFontsForZine();
+        layerManager.renderLayers();
+        
+        document.getElementById('zineTitle').value = zine.title || 'Untitled';
+        this.render();
+    },
+    
+    recalculateZIndexes() {
+        state.currentZine.pages.forEach(page => {
+            page.articles.forEach(art => {
+                const layerIndex = state.layers.findIndex(l => l.id === (art.layerId || 'layer_1'));
+                art.z = ((layerIndex + 1) * 100) + (art.z % 100);
+            });
+        });
+        this.render();
+    },
+    
+    render() {
+        if (!state.currentZine) return;
+        const page = state.currentZine.pages[state.currentPage];
+        const canvas = document.getElementById('canvas');
+        
+        canvas.innerHTML = '<div class="grid-overlay" id="gridOverlay"></div>';
+        if (state.snapToGrid) document.getElementById('gridOverlay').classList.add('visible');
+        
+        if (page.background && page.background.dataUrl) {
+            canvas.style.backgroundImage = `url(${page.background.dataUrl})`;
+            canvas.style.backgroundSize = page.background.size || 'cover';
+            canvas.style.backgroundPosition = page.background.position || 'center';
+            
+            const preview = document.getElementById('bgPreview');
+            preview.style.backgroundImage = `url(${page.background.dataUrl})`;
+            preview.textContent = '';
+            document.getElementById('bgControls').style.display = 'block';
+            document.getElementById('bgSize').value = page.background.size || 'cover';
+        } else {
+            canvas.style.backgroundImage = '';
+            canvas.style.backgroundColor = 'var(--paper)';
+            document.getElementById('bgPreview').style.backgroundImage = '';
+            document.getElementById('bgPreview').textContent = 'No background';
+            document.getElementById('bgControls').style.display = 'none';
+        }
+        
+        page.articles.forEach(art => {
+            articles.render(art);
+            const layer = state.layers.find(l => l.id === (art.layerId || 'layer_1'));
+            if (layer && !layer.visible) {
+                const el = document.getElementById(art.id);
+                if (el) el.style.display = 'none';
+            }
+        });
+        
+        document.getElementById('pageNum').textContent = `PAGE ${state.currentPage + 1}/${state.currentZine.pages.length}`;
+        updateUI();
+    },
+    
+    addPage() {
+        util.saveState();
+        state.currentZine.pages.push({ id: Date.now(), articles: [], background: null });
+        state.currentPage = state.currentZine.pages.length - 1;
+        this.render();
+        storage.saveCurrent();
+    },
+    
+    prevPage() {
+        if (state.currentPage > 0) {
+            state.currentPage--;
+            this.render();
+        }
+    },
+    
+    nextPage() {
+        if (state.currentPage < state.currentZine.pages.length - 1) {
+            state.currentPage++;
+            this.render();
+        }
+    },
+    
+    toggleSnap() {
+        state.snapToGrid = !state.snapToGrid;
+        document.getElementById('snapBtn').textContent = 'SNAP: ' + (state.snapToGrid ? 'ON' : 'OFF');
+        document.getElementById('snapBtn').classList.toggle('active', state.snapToGrid);
+        document.getElementById('gridOverlay').classList.toggle('visible', state.snapToGrid);
+    },
+    
+    undo() {
+        if (state.histStep > 0) {
+            state.histStep--;
+            state.currentZine.pages = JSON.parse(state.history[state.histStep]);
+            this.render();
+            articles.deselectAll();
+        }
+    },
+    
+    redo() {
+        if (state.histStep < state.history.length - 1) {
+            state.histStep++;
+            state.currentZine.pages = JSON.parse(state.history[state.histStep]);
+            this.render();
+            articles.deselectAll();
+        }
+    },
+    
+    uploadBackground() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.onchange = (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                util.saveState();
+                const page = state.currentZine.pages[state.currentPage];
+                page.background = { dataUrl: ev.target.result, size: 'cover', position: 'center' };
+                this.render();
+                storage.saveCurrent();
+            };
+            reader.readAsDataURL(file);
+        };
+        input.click();
+    },
+    
+    setBgSize(val) {
+        if (state.currentZine.pages[state.currentPage].background) {
+            util.saveState();
+            state.currentZine.pages[state.currentPage].background.size = val;
+            document.getElementById('canvas').style.backgroundSize = val;
+            storage.saveCurrent();
+        }
+    },
+    
+    removeBackground() {
+        util.saveState();
+        state.currentZine.pages[state.currentPage].background = null;
+        this.render();
+        storage.saveCurrent();
+    }
+};
+
+// ==========================================
+// ARTICLES - PRESERVED EXACTLY AS WORKING
+// ==========================================
+const articles = {
+    isTextType(t) { return ['headline', 'subhead', 'body'].includes(t); },
+    isMediaType(t) { return ['image', 'gif', 'video'].includes(t); },
+    
+    getArticle(id) {
+        return state.currentZine.pages[state.currentPage].articles.find(a => a.id === id);
+    },
+    
+    add(type) {
+        util.saveState();
+        const id = util.uid();
+        const canvas = document.getElementById('canvas');
+        const centerX = (canvas.offsetWidth - 400) / 2;
+        
+        let content = '', w = 400, h = 200;
+        if (type === 'headline') { content = 'Main Headline Here'; w = 600; h = 100; }
+        else if (type === 'subhead') { content = 'Subheading text'; w = 500; h = 60; }
+        else if (type === 'body') { content = 'Body text goes here...'; w = 400; h = 300; }
+        
+        const layerIndex = state.layers.findIndex(l => l.id === state.activeLayerId);
+        const baseZ = (layerIndex + 1) * 100;
+        
+        const art = { 
+            id, type, content, 
+            x: util.snap(centerX), y: 50, w, h, 
+            styles: { color: '#000', background: 'transparent' }, 
+            columns: 1, 
+            z: baseZ + 10,
+            layerId: state.activeLayerId
+        };
+        
+        state.currentZine.pages[state.currentPage].articles.push(art);
+        this.render(art);
+        this.select(id);
+        storage.saveCurrent();
+    },
+    
+    addImage() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.onchange = (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const img = new Image();
+            const url = URL.createObjectURL(file);
+            img.onload = () => {
+                URL.revokeObjectURL(url);
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    util.saveState();
+                    const id = util.uid();
+                    const ratio = img.width / img.height;
+                    const h = 300;
+                    const w = h * ratio;
+                    
+                    const layerIndex = state.layers.findIndex(l => l.id === state.activeLayerId);
+                    const baseZ = (layerIndex + 1) * 100;
+                    
+                    const art = { 
+                        id, type: 'image', 
+                        dataUrl: ev.target.result, 
+                        x: 50, y: 50, w, h, 
+                        aspectRatio: ratio, 
+                        fitMode: 'cover', 
+                        aspectLocked: true, 
+                        z: baseZ + 10,
+                        layerId: state.activeLayerId
+                    };
+                    state.currentZine.pages[state.currentPage].articles.push(art);
+                    this.render(art);
+                    this.select(id);
+                    storage.saveCurrent();
+                };
+                reader.readAsDataURL(file);
+            };
+            img.src = url;
+        };
+        input.click();
+    },
+    
+    addGif() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/gif';
+        input.onchange = (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const img = new Image();
+            const url = URL.createObjectURL(file);
+            img.onload = () => {
+                URL.revokeObjectURL(url);
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    util.saveState();
+                    const id = util.uid();
+                    const ratio = img.width / img.height;
+                    const h = 200;
+                    const w = h * ratio;
+                    
+                    const layerIndex = state.layers.findIndex(l => l.id === state.activeLayerId);
+                    const baseZ = (layerIndex + 1) * 100;
+                    
+                    const art = { 
+                        id, type: 'gif', 
+                        dataUrl: ev.target.result, 
+                        x: 50, y: 50, w, h, 
+                        aspectRatio: ratio, 
+                        fitMode: 'cover', 
+                        aspectLocked: true, 
+                        z: baseZ + 10,
+                        layerId: state.activeLayerId
+                    };
+                    state.currentZine.pages[state.currentPage].articles.push(art);
+                    this.render(art);
+                    this.select(id);
+                    storage.saveCurrent();
+                };
+                reader.readAsDataURL(file);
+            };
+            img.src = url;
+        };
+        input.click();
+    },
+    
+    showVideoOptions() {
+        document.getElementById('videoModal').classList.add('active');
+    },
+    
+    addVideoURL() {
+        document.getElementById('videoModal').classList.remove('active');
+        const url = prompt('Enter video URL (YouTube, Vimeo, or direct MP4 link):');
+        if (!url) return;
+        
+        util.saveState();
+        let embed = url;
+        if (url.includes('youtube.com') || url.includes('youtu.be')) {
+            const v = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1];
+            if (v) embed = `https://www.youtube.com/embed/${v}`;
+        } else if (url.includes('vimeo.com')) {
+            const v = url.match(/vimeo\.com\/([0-9]+)/)?.[1];
+            if (v) embed = `https://player.vimeo.com/video/${v}`;
+        }
+        
+        const layerIndex = state.layers.findIndex(l => l.id === state.activeLayerId);
+        const baseZ = (layerIndex + 1) * 100;
+        
+        const art = {
+            id: util.uid(),
+            type: 'video',
+            content: embed,
+            videoType: 'embed',
+            x: 50, y: 50, w: 560, h: 315,
+            aspectRatio: 16/9,
+            z: baseZ + 10,
+            layerId: state.activeLayerId
+        };
+        
+        state.currentZine.pages[state.currentPage].articles.push(art);
+        this.render(art);
+        this.select(art.id);
+        storage.saveCurrent();
+    },
+    
+    addVideoFile() {
+        document.getElementById('videoModal').classList.remove('active');
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'video/mp4,video/webm,video/ogg';
+        input.onchange = (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const videoUrl = URL.createObjectURL(file);
+            const video = document.createElement('video');
+            video.preload = 'metadata';
+            video.onloadedmetadata = () => {
+                URL.revokeObjectURL(videoUrl);
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    util.saveState();
+                    const id = util.uid();
+                    const ratio = video.videoWidth / video.videoHeight;
+                    const h = 315;
+                    const w = h * ratio;
+                    
+                    const layerIndex = state.layers.findIndex(l => l.id === state.activeLayerId);
+                    const baseZ = (layerIndex + 1) * 100;
+                    
+                    const art = {
+                        id,
+                        type: 'video',
+                        content: ev.target.result,
+                        videoType: 'file',
+                        x: 50, y: 50, w: w, h: h,
+                        aspectRatio: ratio,
+                        fitMode: 'cover',
+                        aspectLocked: true,
+                        z: baseZ + 10,
+                        layerId: state.activeLayerId
+                    };
+                    
+                    state.currentZine.pages[state.currentPage].articles.push(art);
+                    this.render(art);
+                    this.select(id);
+                    storage.saveCurrent();
+                };
+                reader.readAsDataURL(file);
+            };
+            video.src = videoUrl;
+        };
+        input.click();
+    },
+    
+    addAudio() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'audio/*';
+        input.onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            jsmediatags.read(file, {
+                onSuccess: (tag) => {
+                    const tags = tag.tags;
+                    const title = tags.title || file.name.replace(/\.[^/.]+$/, '');
+                    const artist = tags.artist || 'Unknown Artist';
+                    
+                    let coverUrl = null;
+                    if (tags.picture) {
+                        const { data, format } = tags.picture;
+                        const byteArray = new Uint8Array(data);
+                        const blob = new Blob([byteArray], { type: format });
+                        coverUrl = resources.createURL(blob, 'temp');
+                    }
+                    
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                        util.saveState();
+                        const id = util.uid();
+                        
+                        if (!coverUrl) {
+                            const canvas = document.createElement('canvas');
+                            canvas.width = 400; canvas.height = 400;
+                            const ctx = canvas.getContext('2d');
+                            let hash = 0;
+                            for (let i = 0; i < file.name.length; i++) {
+                                hash = ((hash << 5) - hash) + file.name.charCodeAt(i);
+                            }
+                            const hue = Math.abs(hash % 360);
+                            const grad = ctx.createLinearGradient(0, 0, 400, 400);
+                            grad.addColorStop(0, `hsl(${hue},70%,50%)`);
+                            grad.addColorStop(1, `hsl(${(hue + 180) % 360},70%,30%)`);
+                            ctx.fillStyle = grad;
+                            ctx.fillRect(0, 0, 400, 400);
+                            ctx.fillStyle = 'rgba(255,255,255,0.1)';
+                            for (let i = 0; i < 20; i++) {
+                                const bh = Math.random() * 200 + 50;
+                                ctx.fillRect(i * 20 + 10, 200 - bh / 2, 10, bh);
+                            }
+                            coverUrl = canvas.toDataURL();
+                        }
+                        
+                        const layerIndex = state.layers.findIndex(l => l.id === state.activeLayerId);
+                        const baseZ = (layerIndex + 1) * 100;
+                        
+                        const art = { 
+                            id, 
+                            type: 'audio', 
+                            audioData: ev.target.result, 
+                            coverUrl: coverUrl, 
+                            content: { title: title, artist: artist, duration: 0, volume: 0.7 }, 
+                            x: 50, y: 50, w: 350, h: 180, 
+                            z: baseZ + 10,
+                            layerId: state.activeLayerId
+                        };
+                        
+                        state.currentZine.pages[state.currentPage].articles.push(art);
+                        this.render(art);
+                        this.select(id);
+                        storage.saveCurrent();
+                    };
+                    reader.readAsDataURL(file);
+                },
+                onError: (error) => {
+                    console.log('Error reading metadata:', error);
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                        util.saveState();
+                        const id = util.uid();
+                        
+                        const canvas = document.createElement('canvas');
+                        canvas.width = 400; canvas.height = 400;
+                        const ctx = canvas.getContext('2d');
+                        let hash = 0;
+                        for (let i = 0; i < file.name.length; i++) {
+                            hash = ((hash << 5) - hash) + file.name.charCodeAt(i);
+                        }
+                        const hue = Math.abs(hash % 360);
+                        const grad = ctx.createLinearGradient(0, 0, 400, 400);
+                        grad.addColorStop(0, `hsl(${hue},70%,50%)`);
+                        grad.addColorStop(1, `hsl(${(hue + 180) % 360},70%,30%)`);
+                        ctx.fillStyle = grad;
+                        ctx.fillRect(0, 0, 400, 400);
+                        ctx.fillStyle = 'rgba(255,255,255,0.1)';
+                        for (let i = 0; i < 20; i++) {
+                            const bh = Math.random() * 200 + 50;
+                            ctx.fillRect(i * 20 + 10, 200 - bh / 2, 10, bh);
+                        }
+                        const coverUrl = canvas.toDataURL();
+                        
+                        const layerIndex = state.layers.findIndex(l => l.id === state.activeLayerId);
+                        const baseZ = (layerIndex + 1) * 100;
+                        
+                        const art = { 
+                            id, 
+                            type: 'audio', 
+                            audioData: ev.target.result, 
+                            coverUrl: coverUrl, 
+                            content: { 
+                                title: file.name.replace(/\.[^/.]+$/, ''), 
+                                artist: 'Unknown Artist', 
+                                duration: 0, 
+                                volume: 0.7 
+                            }, 
+                            x: 50, y: 50, w: 350, h: 180, 
+                            z: baseZ + 10,
+                            layerId: state.activeLayerId
+                        };
+                        
+                        state.currentZine.pages[state.currentPage].articles.push(art);
+                        this.render(art);
+                        this.select(id);
+                        storage.saveCurrent();
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        };
+        input.click();
+    },
+    
+    uploadAudioCover() {
+        if (!state.selected || state.selected.type !== 'audio') return;
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.onchange = (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                state.selected.coverUrl = ev.target.result;
+                const el = document.getElementById(state.selected.id);
+                const img = el.querySelector('.itunes-artwork img');
+                if (img) img.src = ev.target.result;
+                else {
+                    const artwork = el.querySelector('.itunes-artwork');
+                    if (artwork) artwork.innerHTML = `<img src="${ev.target.result}" alt="Cover">`;
+                }
+                storage.saveCurrent();
+            };
+            reader.readAsDataURL(file);
+        };
+        input.click();
+    },
+    
+    changeAudioFile() {
+        if (!state.selected || state.selected.type !== 'audio') return;
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'audio/*';
+        input.onchange = (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            jsmediatags.read(file, {
+                onSuccess: (tag) => {
+                    const tags = tag.tags;
+                    state.selected.content.title = tags.title || file.name.replace(/\.[^/.]+$/, '');
+                    state.selected.content.artist = tags.artist || 'Unknown Artist';
+                    
+                    if (tags.picture) {
+                        const { data, format } = tags.picture;
+                        const byteArray = new Uint8Array(data);
+                        const blob = new Blob([byteArray], { type: format });
+                        state.selected.coverUrl = resources.createURL(blob, state.selected.id);
+                    }
+                    
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                        state.selected.audioData = ev.target.result;
+                        const el = document.getElementById(state.selected.id);
+                        el.innerHTML = '';
+                        this.renderAudioPlayer(el, state.selected);
+                        this.addHandles(el, state.selected.id);
+                        storage.saveCurrent();
+                    };
+                    reader.readAsDataURL(file);
+                },
+                onError: () => {
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                        state.selected.audioData = ev.target.result;
+                        state.selected.content.title = file.name.replace(/\.[^/.]+$/, '');
+                        const el = document.getElementById(state.selected.id);
+                        el.innerHTML = '';
+                        this.renderAudioPlayer(el, state.selected);
+                        this.addHandles(el, state.selected.id);
+                        storage.saveCurrent();
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        };
+        input.click();
+    },
+    
+    render(data) {
+        const el = document.createElement('div');
+        el.className = `article ${data.type} ${data.fitMode || ''}`;
+        el.id = data.id;
+        el.style.left = data.x + 'px';
+        el.style.top = data.y + 'px';
+        el.style.width = data.w + 'px';
+        el.style.height = data.h + 'px';
+        el.style.zIndex = data.z;
+        
+        if (data.styles) {
+            el.style.color = data.styles.color || 'inherit';
+            el.style.backgroundColor = data.styles.background || 'transparent';
+            if (data.styles.fontFamily) el.style.fontFamily = data.styles.fontFamily;
+            if (data.styles.fontSize) el.style.fontSize = data.styles.fontSize;
+            if (data.styles.textAlign) el.style.textAlign = data.styles.textAlign;
+            if (data.styles.fontWeight) el.style.fontWeight = data.styles.fontWeight;
+            if (data.styles.fontStyle) el.style.fontStyle = data.styles.fontStyle;
+            if (data.styles.textDecoration) el.style.textDecoration = data.styles.textDecoration;
+        }
+        
+        if (data.type === 'audio') {
+            this.renderAudioPlayer(el, data);
+        } else if (data.type === 'image' || data.type === 'gif') {
+            el.innerHTML = `<img src="${data.dataUrl}" draggable="false" style="width:100%;height:100%;object-fit:${data.fitMode || 'cover'};">`;
+        } else if (data.type === 'video') {
+            if (data.videoType === 'file') {
+                el.innerHTML = `<video src="${data.content}" style="width:100%;height:100%;object-fit:cover;" controls></video>`;
+            } else {
+                el.innerHTML = `<iframe src="${data.content}" style="width:100%;height:100%;border:none;" allowfullscreen></iframe>`;
+            }
+        } else {
+            el.innerHTML = `<div class="text-content" style="width:100%;height:100%;">${data.content}</div>`;
+            if (data.columns > 1) el.classList.add(`columns-${data.columns}`);
+        }
+        
+        this.addHandles(el, data.id);
+        
+        // EXACT original drag logic
+        el.onmousedown = (e) => {
+            if (e.target.classList.contains('handle')) return;
+            if (e.target.tagName === 'VIDEO' || e.target.tagName === 'AUDIO') return;
+            if (e.target.closest('.itunes-player')) {
+                if (e.target.closest('button') || 
+                    e.target.closest('.itunes-progress-container') || 
+                    e.target.closest('.itunes-volume-slider') ||
+                    e.target.closest('.itunes-artwork')) {
+                    return;
+                }
+            }
+            this.startDrag(e, data.id);
+        };
+        
+        if (this.isTextType(data.type)) {
+            el.ondblclick = (e) => { 
+                e.stopPropagation(); 
+                this.enterEditMode(data.id); 
+            };
+        }
+        
+        document.getElementById('canvas').appendChild(el);
+        
+        if (data.layerId && data.layerId !== state.activeLayerId) {
+            el.style.opacity = '0.5';
+        } else {
+            el.style.opacity = '1';
+        }
+    },
+    
+    renderAudioPlayer(el, data) {
+        const vol = data.content?.volume || 0.7;
+        el.innerHTML = `
+            <div class="itunes-player">
+                <div class="itunes-top">
+                    <div class="itunes-artwork" onclick="articles.togglePlay('${data.id}')">
+                        ${data.coverUrl ? `<img src="${data.coverUrl}" alt="Cover">` : `<div class="no-art">♪</div>`}
+                    </div>
+                    <div class="itunes-info">
+                        <div class="itunes-title">${data.content?.title || 'Untitled'}</div>
+                        <div class="itunes-artist">${data.content?.artist || 'Unknown'}</div>
+                        <div class="itunes-time" id="time-${data.id}">0:00 / 0:00</div>
+                    </div>
+                </div>
+                <div class="itunes-controls">
+                    <button class="itunes-btn" onclick="articles.prevTrack('${data.id}')">⏮</button>
+                    <button class="itunes-btn play" id="play-btn-${data.id}" onclick="articles.togglePlay('${data.id}')">▶</button>
+                    <button class="itunes-btn" onclick="articles.nextTrack('${data.id}')">⏭</button>
+                </div>
+                <div class="itunes-progress-container" onclick="articles.seek(event, '${data.id}')">
+                    <div class="itunes-progress-bg">
+                        <div class="itunes-progress-fill" id="progress-${data.id}" style="width:0%"></div>
+                    </div>
+                    <div class="itunes-progress-handle" id="handle-${data.id}" style="left:0%"></div>
+                </div>
+                <div class="itunes-bottom">
+                    <div class="itunes-volume">
+                        <span class="itunes-volume-icon" onclick="articles.toggleMute('${data.id}')">🔊</span>
+                        <div class="itunes-volume-slider" onclick="articles.setVolume(event, '${data.id}')">
+                            <div class="itunes-volume-fill" id="volume-${data.id}" style="width:${vol * 100}%"></div>
+                        </div>
+                    </div>
+                </div>
+                <audio id="audio-${data.id}" src="${data.audioData}" preload="metadata" 
+                    ontimeupdate="articles.updateProgress('${data.id}')" 
+                    onloadedmetadata="articles.loadMetadata('${data.id}')"
+                    onended="articles.trackEnded('${data.id}')"></audio>
+            </div>
+        `;
+        setTimeout(() => { const aud = document.getElementById(`audio-${data.id}`); if (aud) aud.volume = vol; }, 0);
+    },
+    
+    addHandles(el, id) {
+        ['nw', 'ne', 'sw', 'se'].forEach(h => {
+            const d = document.createElement('div');
+            d.className = `handle ${h}`;
+            d.onmousedown = (e) => { e.stopPropagation(); this.startResize(e, id, h); };
+            el.appendChild(d);
+        });
+    },
+    
+    togglePlay(id) {
+        const aud = document.getElementById(`audio-${id}`);
+        const btn = document.getElementById(`play-btn-${id}`);
+        if (!aud || !btn) return;
+        
+        if (resources.activeAudio && resources.activeAudio !== id) {
+            const other = document.getElementById(`audio-${resources.activeAudio}`);
+            const otherBtn = document.getElementById(`play-btn-${resources.activeAudio}`);
+            if (other) { other.pause(); if (otherBtn) otherBtn.innerHTML = '▶'; }
+        }
+        
+        if (aud.paused) {
+            aud.play();
+            btn.innerHTML = '⏸';
+            resources.activeAudio = id;
+        } else {
+            aud.pause();
+            btn.innerHTML = '▶';
+            resources.activeAudio = null;
+        }
+    },
+    
+    updateProgress(id) {
+        const aud = document.getElementById(`audio-${id}`);
+        if (!aud || isNaN(aud.duration)) return;
+        const pct = (aud.currentTime / aud.duration) * 100;
+        document.getElementById(`progress-${id}`).style.width = pct + '%';
+        document.getElementById(`handle-${id}`).style.left = pct + '%';
+        const fmt = (t) => { const m = Math.floor(t/60); const s = Math.floor(t%60); return `${m}:${s<10?'0':''}${s}`; };
+        document.getElementById(`time-${id}`).textContent = `${fmt(aud.currentTime)} / ${fmt(aud.duration)}`;
+    },
+    
+    loadMetadata(id) {},
+    
+    trackEnded(id) {
+        const btn = document.getElementById(`play-btn-${id}`);
+        if (btn) btn.innerHTML = '▶';
+        if (resources.activeAudio === id) resources.activeAudio = null;
+        document.getElementById(`progress-${id}`).style.width = '0%';
+        document.getElementById(`handle-${id}`).style.left = '0%';
+    },
+    
+    seek(e, id) {
+        e.stopPropagation();
+        const aud = document.getElementById(`audio-${id}`);
+        if (!aud || isNaN(aud.duration)) return;
+        const rect = e.currentTarget.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        aud.currentTime = (x / rect.width) * aud.duration;
+    },
+    
+    setVolume(e, id) {
+        e.stopPropagation();
+        const aud = document.getElementById(`audio-${id}`);
+        const art = this.getArticle(id);
+        if (!aud || !art) return;
+        
+        const rect = e.currentTarget.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const vol = Math.max(0, Math.min(1, x / rect.width));
+        
+        aud.volume = vol;
+        if (!art.content) art.content = {};
+        art.content.volume = vol;
+        document.getElementById(`volume-${id}`).style.width = (vol * 100) + '%';
+        
+        const icon = document.querySelector(`#${id} .itunes-volume-icon`);
+        if (icon) icon.textContent = vol === 0 ? '🔇' : vol < 0.5 ? '🔉' : '🔊';
+        
+        storage.saveCurrent();
+    },
+    
+    toggleMute(id) {
+        const aud = document.getElementById(`audio-${id}`);
+        const art = this.getArticle(id);
+        if (!aud || !art) return;
+        
+        if (aud.volume > 0) {
+            art.content.lastVolume = aud.volume;
+            aud.volume = 0;
+            document.getElementById(`volume-${id}`).style.width = '0%';
+        } else {
+            const v = art.content.lastVolume || 0.7;
+            aud.volume = v;
+            document.getElementById(`volume-${id}`).style.width = (v * 100) + '%';
+        }
+        storage.saveCurrent();
+    },
+    
+    prevTrack(id) {
+        const aud = document.getElementById(`audio-${id}`);
+        if (aud) { aud.currentTime = 0; if (aud.paused) this.togglePlay(id); }
+    },
+    
+    nextTrack(id) {
+        const aud = document.getElementById(`audio-${id}`);
+        if (aud) { aud.currentTime = 0; if (!aud.paused) this.togglePlay(id); }
+    },
+    
+    select(id) {
+        this.deselectAll();
+        const el = document.getElementById(id);
+        if (el) {
+            el.classList.add('selected');
+            state.selected = this.getArticle(id);
+            this.updatePanels();
+            
+            if (this.isTextType(state.selected.type)) {
+                this.showFormatToolbar(el);
+            }
+        }
+    },
+    
+    deselectAll() {
+        document.querySelectorAll('.article').forEach(el => {
+            el.classList.remove('selected');
+            if (el.classList.contains('editing')) {
+                const t = el.querySelector('.text-content');
+                if (t) { t.contentEditable = false; t.blur(); }
+                el.classList.remove('editing');
+            }
+        });
+        state.selected = null;
+        this.updatePanels();
+        this.hideFormatToolbar();
+    },
+    
+    showFormatToolbar(el) {
+        const toolbar = document.getElementById('formatToolbar');
+        const rect = el.getBoundingClientRect();
+        toolbar.style.left = Math.max(10, rect.left) + 'px';
+        toolbar.style.top = Math.max(10, rect.top - 50) + 'px';
+        toolbar.classList.add('visible');
+        
+        if (state.selected) {
+            document.getElementById('fontFamilySelect').value = state.selected.styles?.fontFamily || '';
+            document.getElementById('fontSizeSelect').value = state.selected.styles?.fontSize || '';
+        }
+    },
+    
+    hideFormatToolbar() {
+        document.getElementById('formatToolbar').classList.remove('visible');
+    },
+    
+    enterEditMode(id) {
+        const el = document.getElementById(id);
+        const art = this.getArticle(id);
+        if (!art || !this.isTextType(art.type)) return;
+        
+        el.classList.add('editing');
+        const txt = el.querySelector('.text-content');
+        txt.contentEditable = true;
+        txt.focus();
+        
+        this.showFormatToolbar(el);
+        
+        const save = () => {
+            if (!el.classList.contains('editing')) return;
+            txt.contentEditable = false;
+            el.classList.remove('editing');
+            art.content = Security.purify(txt.innerHTML);
+            storage.saveCurrent();
+        };
+        
+        txt.onblur = save;
+        txt.onkeydown = (e) => { 
+            if (e.key === 'Escape') { 
+                e.preventDefault(); 
+                save(); 
+                this.deselectAll();
+            }
+        };
+    },
+    
+    updatePanels() {
+        const has = !!state.selected;
+        document.getElementById('stylePanel').style.display = has ? 'block' : 'none';
+        document.getElementById('layoutPanel').style.display = has ? 'block' : 'none';
+        document.getElementById('arrangePanel').style.display = has ? 'block' : 'none';
+        
+        if (!has) return;
+        const s = state.selected;
+        
+        document.getElementById('typeSelect').value = s.type;
+        document.getElementById('columnSelect').value = s.columns || 1;
+        document.getElementById('textColor').value = s.styles?.color || '#000000';
+        document.getElementById('bgColor').value = s.styles?.background || '#ffffff';
+        document.getElementById('posX').value = Math.round(s.x);
+        document.getElementById('posY').value = Math.round(s.y);
+        document.getElementById('posW').value = Math.round(s.w);
+        document.getElementById('posH').value = Math.round(s.h);
+        document.getElementById('audioControl').style.display = s.type === 'audio' ? 'block' : 'none';
+        document.getElementById('columnControl').style.display = this.isTextType(s.type) ? 'block' : 'none';
+        document.getElementById('imageControls').style.display = this.isMediaType(s.type) ? 'block' : 'none';
+        
+        if (this.isMediaType(s.type)) document.getElementById('fitMode').value = s.fitMode || 'cover';
+    },
+    
+    execCommand(command) {
+        if (!state.selected || !this.isTextType(state.selected.type)) return;
+        
+        const el = document.getElementById(state.selected.id);
+        const txt = el?.querySelector('.text-content');
+        
+        if (txt && document.activeElement !== txt) {
+            txt.focus();
+        }
+        
+        document.execCommand(command, false, null);
+        
+        setTimeout(() => {
+            state.selected.content = Security.purify(txt.innerHTML);
+            storage.saveCurrent();
+        }, 0);
+    },
+    
+    setFontFamily(font) {
+        if (!state.selected || !this.isTextType(state.selected.type)) return;
+        
+        if (!state.selected.styles) state.selected.styles = {};
+        state.selected.styles.fontFamily = font;
+        
+        const el = document.getElementById(state.selected.id);
+        if (el) el.style.fontFamily = font;
+        storage.saveCurrent();
+    },
+    
+    setFontSize(size) {
+        if (!state.selected || !this.isTextType(state.selected.type)) return;
+        
+        if (!state.selected.styles) state.selected.styles = {};
+        state.selected.styles.fontSize = size;
+        
+        const el = document.getElementById(state.selected.id);
+        if (el) el.style.fontSize = size;
+        storage.saveCurrent();
+    },
+    
+    moveToLayer(layerId) {
+        if (!state.selected || !layerId) return;
+        
+        state.selected.layerId = layerId;
+        const layerIndex = state.layers.findIndex(l => l.id === layerId);
+        const baseZ = (layerIndex + 1) * 100;
+        state.selected.z = baseZ + 10;
+        
+        const el = document.getElementById(state.selected.id);
+        if (el) {
+            el.style.zIndex = state.selected.z;
+            el.style.opacity = (layerId === state.activeLayerId) ? '1' : '0.5';
+        }
+        storage.saveCurrent();
+    },
+    
+    setType(type) {
+        if (!state.selected) return;
+        
+        state.selected.type = type;
+        const el = document.getElementById(state.selected.id);
+        if (el) {
+            el.className = `article ${type}`;
+            this.hideFormatToolbar();
+        }
+        this.updatePanels();
+        storage.saveCurrent();
+    },
+    
+    setColumns(n) {
+        if (!state.selected) return;
+        
+        state.selected.columns = parseInt(n);
+        const el = document.getElementById(state.selected.id);
+        if (el) {
+            el.classList.remove('columns-2', 'columns-3');
+            if (parseInt(n) > 1) el.classList.add(`columns-${n}`);
+        }
+        storage.saveCurrent();
+    },
+    
+    setStyle(prop, val) {
+        if (!state.selected) return;
+        
+        if (!state.selected.styles) state.selected.styles = {};
+        state.selected.styles[prop] = val;
+        
+        const el = document.getElementById(state.selected.id);
+        if (el) {
+            if (prop === 'color') el.style.color = val;
+            if (prop === 'background') el.style.backgroundColor = val;
+        }
+        storage.saveCurrent();
+    },
+    
+    clearBackground() {
+        if (!state.selected) return;
+        
+        if (state.selected.styles) state.selected.styles.background = 'transparent';
+        const el = document.getElementById(state.selected.id);
+        if (el) el.style.backgroundColor = 'transparent';
+        storage.saveCurrent();
+    },
+    
+    setFitMode(mode) {
+        if (!state.selected || !this.isMediaType(state.selected.type)) return;
+        
+        state.selected.fitMode = mode;
+        const el = document.getElementById(state.selected.id);
+        if (el) {
+            el.classList.remove('cover', 'contain', 'stretch');
+            el.classList.add(mode);
+            const img = el.querySelector('img');
+            if (img) img.style.objectFit = mode;
+        }
+        storage.saveCurrent();
+    },
+    
+    layerUp() {
+        if (!state.selected) return;
+        
+        const currentLayerIndex = state.layers.findIndex(l => l.id === (state.selected.layerId || 'layer_1'));
+        const maxZ = (currentLayerIndex + 1) * 100 + 99;
+        state.selected.z = Math.min(state.selected.z + 1, maxZ);
+        
+        document.getElementById(state.selected.id).style.zIndex = state.selected.z;
+        storage.saveCurrent();
+    },
+    
+    layerDown() {
+        if (!state.selected) return;
+        
+        const currentLayerIndex = state.layers.findIndex(l => l.id === (state.selected.layerId || 'layer_1'));
+        const minZ = (currentLayerIndex + 1) * 100;
+        state.selected.z = Math.max(state.selected.z - 1, minZ);
+        
+        document.getElementById(state.selected.id).style.zIndex = state.selected.z;
+        storage.saveCurrent();
+    },
+    
+    delete() {
+        if (!state.selected) return;
+        
+        const id = state.selected.id;
+        if (state.selected.type === 'audio') {
+            resources.cleanupAudio(id);
+        }
+        resources.revokeAll(id);
+        
+        const page = state.currentZine.pages[state.currentPage];
+        page.articles = page.articles.filter(a => a.id !== id);
+        
+        document.getElementById(id)?.remove();
+        state.selected = null;
+        this.updatePanels();
+        this.hideFormatToolbar();
+        storage.saveCurrent();
+    },
+    
+    updateFromInput() {
+        if (!state.selected) return;
+        
+        state.selected.x = parseInt(document.getElementById('posX').value) || 0;
+        state.selected.y = parseInt(document.getElementById('posY').value) || 0;
+        state.selected.w = Math.max(50, parseInt(document.getElementById('posW').value) || 100);
+        state.selected.h = Math.max(50, parseInt(document.getElementById('posH').value) || 100);
+        
+        const el = document.getElementById(state.selected.id);
+        if (el) {
+            el.style.left = state.selected.x + 'px';
+            el.style.top = state.selected.y + 'px';
+            el.style.width = state.selected.w + 'px';
+            el.style.height = state.selected.h + 'px';
+        }
+        storage.saveCurrent();
+    },
+    
+    dragItem: null,
+    resizeItem: null,
+    
+    startDrag(e, id) {
+        if (state.selected?.id !== id) this.select(id);
+        const art = this.getArticle(id);
+        const el = document.getElementById(id);
+        
+        this.dragItem = { 
+            id, art, el, 
+            startX: e.clientX, 
+            startY: e.clientY, 
+            origX: art.x, 
+            origY: art.y 
+        };
+        
+        el.classList.add('dragging');
+        document.body.style.cursor = 'grabbing';
+        
+        document.addEventListener('mousemove', this.onDragMove);
+        document.addEventListener('mouseup', this.onDragEnd);
+    },
+    
+    onDragMove: (e) => {
+        const self = articles;
+        if (!self.dragItem) return;
+        
+        const { art, el, startX, startY, origX, origY } = self.dragItem;
+        let nx = origX + (e.clientX - startX);
+        let ny = origY + (e.clientY - startY);
+        
+        nx = Math.max(0, Math.min(1200 - art.w, nx));
+        ny = Math.max(0, Math.min(1600 - art.h, ny));
+        
+        if (state.snapToGrid) {
+            nx = Math.round(nx / state.GRID_SIZE) * state.GRID_SIZE;
+            ny = Math.round(ny / state.GRID_SIZE) * state.GRID_SIZE;
+        }
+        
+        art.x = nx; art.y = ny;
+        el.style.left = nx + 'px';
+        el.style.top = ny + 'px';
+        
+        document.getElementById('posX').value = Math.round(nx);
+        document.getElementById('posY').value = Math.round(ny);
+    },
+    
+    onDragEnd: () => {
+        const self = articles;
+        if (self.dragItem) {
+            self.dragItem.el.classList.remove('dragging');
+            self.dragItem = null;
+            document.body.style.cursor = '';
+            storage.saveCurrent();
+        }
+        document.removeEventListener('mousemove', self.onDragMove);
+        document.removeEventListener('mouseup', self.onDragEnd);
+    },
+    
+    startResize(e, id, dir) {
+        const art = this.getArticle(id);
+        const el = document.getElementById(id);
+        const maintain = art.aspectLocked && art.aspectRatio;
+        
+        this.resizeItem = { 
+            id, art, el, dir, 
+            startX: e.clientX, startY: e.clientY, 
+            origW: art.w, origH: art.h, 
+            origX: art.x, origY: art.y, 
+            aspect: art.aspectRatio || (art.w / art.h), 
+            maintain 
+        };
+        
+        document.body.style.cursor = getComputedStyle(e.target).cursor;
+        e.preventDefault();
+        
+        document.addEventListener('mousemove', this.onResizeMove);
+        document.addEventListener('mouseup', this.onResizeEnd);
+    },
+    
+    onResizeMove: (e) => {
+        const self = articles;
+        if (!self.resizeItem) return;
+        
+        const { art, el, dir, startX, startY, origW, origH, origX, origY, aspect, maintain } = self.resizeItem;
+        let nw = origW, nh = origH, nx = origX, ny = origY;
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+        
+        if (dir.includes('e')) nw = Math.max(50, origW + dx);
+        if (dir.includes('s')) nh = Math.max(50, origH + dy);
+        if (dir.includes('w')) { nw = Math.max(50, origW - dx); nx = origX + (origW - nw); }
+        if (dir.includes('n')) { nh = Math.max(50, origH - dy); ny = origY + (origH - nh); }
+        
+        if (maintain) {
+            if (dir.includes('e') || dir.includes('w')) {
+                nh = nw / aspect;
+                if (dir.includes('n')) ny = origY + (origH - nh);
+            } else {
+                nw = nh * aspect;
+                if (dir.includes('w')) nx = origX + (origW - nw);
+            }
+        }
+        
+        art.w = nw; art.h = nh; art.x = nx; art.y = ny;
+        el.style.width = nw + 'px'; el.style.height = nh + 'px';
+        el.style.left = nx + 'px'; el.style.top = ny + 'px';
+        
+        document.getElementById('posW').value = Math.round(nw);
+        document.getElementById('posH').value = Math.round(nh);
+        document.getElementById('posX').value = Math.round(nx);
+        document.getElementById('posY').value = Math.round(ny);
+    },
+    
+    onResizeEnd: () => {
+        const self = articles;
+        if (self.resizeItem) {
+            self.resizeItem = null;
+            document.body.style.cursor = '';
+            storage.saveCurrent();
+        }
+        document.removeEventListener('mousemove', self.onResizeMove);
+        document.removeEventListener('mouseup', self.onResizeEnd);
+    }
+};
+
+// Setup format toolbar buttons
+document.querySelectorAll('.format-btn[data-cmd]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        articles.execCommand(btn.dataset.cmd);
+    });
+});
+
+// ==========================================
+// APP CONTROLLER - Preserved exactly
+// ==========================================
+const app = {
+    async init() {
+        await storage.init();
+        storage.load();
+        this.renderLibrary();
+        zineManager.init();
+        layerManager.init();
+        fontManager.init();
+    },
+    
+    renderLibrary() {
+        const grid = document.getElementById('zineGrid');
+        const newCard = grid.firstElementChild;
+        grid.innerHTML = '';
+        grid.appendChild(newCard);
+        
+        state.zines.forEach(zine => {
+            const card = document.createElement('div');
+            card.className = 'zine-card';
+            
+            const thumb = document.createElement('div');
+            thumb.className = 'zine-thumbnail';
+            
+            let thumbSet = false;
+            for (let page of zine.pages) {
+                if (page.background?.dataUrl) {
+                    thumb.innerHTML = `<img src="${page.background.dataUrl}" alt="">`;
+                    thumbSet = true;
+                    break;
+                }
+                for (let art of page.articles) {
+                    if ((art.type === 'image' || art.type === 'gif') && art.dataUrl) {
+                        thumb.innerHTML = `<img src="${art.dataUrl}" alt="">`;
+                        thumbSet = true;
+                        break;
+                    }
+                }
+                if (thumbSet) break;
+            }
+            if (!thumbSet) thumb.textContent = '📄';
+            
+            const info = document.createElement('div');
+            info.className = 'zine-info';
+            info.innerHTML = `
+                <div class="zine-name">${zine.title || 'Untitled'}</div>
+                <div class="zine-meta">${zine.pages.length} pages • ${new Date(zine.modified || zine.created).toLocaleDateString()}</div>
+            `;
+            
+            const actions = document.createElement('div');
+            actions.className = 'zine-actions';
+            actions.innerHTML = `
+                <button class="icon-btn" onclick="event.stopPropagation(); app.downloadZine('${zine.id}')" title="Download">↓</button>
+                <button class="icon-btn" onclick="event.stopPropagation(); app.deleteZine('${zine.id}')" title="Delete">×</button>
+            `;
+            
+            card.appendChild(thumb);
+            card.appendChild(info);
+            card.appendChild(actions);
+            card.onclick = () => this.openZine(zine);
+            
+            grid.appendChild(card);
+        });
+    },
+    
+    createNewZine() {
+        const zine = { 
+            id: 'zine_' + Date.now(), 
+            title: 'Untitled Zine', 
+            created: Date.now(), 
+            modified: Date.now(), 
+            pages: [{ id: Date.now(), articles: [], background: null }],
+            layers: [{id: 'layer_1', name: 'Layer 1', visible: true}],
+            fonts: []
+        };
+        state.zines.push(zine);
+        storage.save();
+        this.openZine(zine);
+    },
+    
+    openZine(zine) {
+        state.currentZine = zine;
+        document.getElementById('library-view').classList.remove('active');
+        document.getElementById('editor-view').classList.add('active');
+        zineManager.load(zine);
+    },
+    
+    backToLibrary() {
+        if (state.currentZine) {
+            state.currentZine.modified = Date.now();
+            state.currentZine.layers = state.layers;
+            storage.saveCurrent();
+        }
+        document.getElementById('editor-view').classList.remove('active');
+        document.getElementById('library-view').classList.add('active');
+        this.renderLibrary();
+    },
+    
+    updateTitle(val) {
+        if (state.currentZine) {
+            state.currentZine.title = val;
+            storage.saveCurrent();
+        }
+    },
+    
+    async exportZine() {
+        if (!state.currentZine) {
+            alert('No zine to export');
+            return;
+        }
+        
+        state.currentZine.layers = state.layers;
+        storage.saveCurrent();
+        
+        const choice = confirm('Click OK for standalone HTML (share online), Cancel for .zine format (re-editable)');
+        
+        try {
+            let blob, filename;
+            
+            if (choice) {
+                blob = await exporter.exportStandaloneHTML(state.currentZine);
+                filename = (state.currentZine.title || 'zine') + '.html';
+            } else {
+                blob = await exporter.exportZineFile(state.currentZine);
+                filename = (state.currentZine.title || 'zine') + '.zine';
+            }
+            
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+        } catch (err) {
+            alert('Export failed: ' + err.message);
+            console.error(err);
+        }
+    },
+    
+    async downloadZine(id) {
+        const zine = state.zines.find(z => z.id === id);
+        if (!zine) return;
+        const blob = await exporter.exportStandaloneHTML(zine);
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = (zine.title || 'zine') + '.html';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    },
+    
+    importZine() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.zine,.zip,.html';
+        input.onchange = (e) => {
+            if (e.target.files[0]) this.importFile(e.target.files[0]);
+        };
+        input.click();
+    },
+    
+    async importFile(file) {
+        try {
+            if (file.name.endsWith('.html')) {
+                alert('HTML files are for viewing only. To edit, import a .zine file.');
+                return;
+            }
+            const zine = await exporter.importZineFile(file);
+            zine.id = 'zine_' + Date.now();
+            zine.imported = true;
+            state.zines.push(zine);
+            storage.save();
+            this.renderLibrary();
+        } catch (err) {
+            alert('Import failed: ' + err.message);
+        }
+    },
+    
+    deleteZine(id) {
+        if (!confirm('Delete this zine forever?')) return;
+        state.zines = state.zines.filter(z => z.id !== id);
+        storage.save();
+        this.renderLibrary();
+    }
+};
+
+// ==========================================
+// EXPORTER - Preserved exactly
+// ==========================================
+const exporter = {
+    async exportStandaloneHTML(zine) {
+        const exportData = JSON.parse(JSON.stringify(zine));
+        
+        let fontStyles = '';
+        if (zine.fonts) {
+            zine.fonts.forEach(font => {
+                fontStyles += `
+                    @font-face {
+                        font-family: '${font.id}';
+                        src: url('${font.dataUrl}') format('${font.format}');
+                    }
+                `;
+            });
+        }
+        
+        const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${zine.title || 'Zine'}</title>
+    <style>
+        ${fontStyles}
+        body{margin:0;background:#1a1a1a;padding:40px;font-family:Georgia,serif;}
+        .page{width:1200px;height:1600px;margin:40px auto;position:relative;background:#fdfdfd;box-shadow:0 20px 60px rgba(0,0,0,0.5);overflow:hidden;}
+        .article{position:absolute;overflow:hidden;}
+        .text-content{padding:10px;}
+        .headline{font-size:48px;font-weight:bold;line-height:1.1;color:#000;}
+        .subhead{font-size:24px;font-style:italic;color:#333;}
+        .body{font-size:16px;line-height:1.6;color:#222;text-align:justify;}
+        .audio{background:linear-gradient(to bottom,#f5f5f5,#e0e0e0);border-radius:8px;border:1px solid #ccc;padding:15px;font-family:sans-serif;}
+        .itunes-top{display:flex;gap:15px;margin-bottom:15px;}
+        .itunes-artwork{width:80px;height:80px;background:linear-gradient(135deg,#667eea,#764ba2);border-radius:4px;flex-shrink:0;overflow:hidden;}
+        .itunes-artwork img{width:100%;height:100%;object-fit:cover;}
+        .itunes-info{flex:1;display:flex;flex-direction:column;justify-content:center;}
+        .itunes-title{font-size:16px;font-weight:600;color:#333;margin-bottom:4px;}
+        .itunes-artist{font-size:13px;color:#666;}
+        audio{width:100%;margin-top:10px;}
+        img,video,iframe{width:100%;height:100%;object-fit:cover;border:none;}
+        .columns-2{column-count:2;column-gap:40px;}
+        .columns-3{column-count:3;column-gap:30px;}
+    </style>
+</head>
+<body>
+    <h1 style="color:#fff;text-align:center;margin-bottom:20px;">${zine.title || 'Zine'}</h1>
+    <div id="pages"></div>
+    <script>
+        const zine = ${JSON.stringify(exportData)};
+        function renderPage(page, num) {
+            const div = document.createElement('div');
+            div.className = 'page';
+            div.innerHTML = '<div style="position:absolute;top:10px;right:15px;color:#999;font-size:12px;">Page ' + num + '</div>';
+            if (page.background) {
+                div.style.backgroundImage = 'url(' + page.background.dataUrl + ')';
+                div.style.backgroundSize = page.background.size || 'cover';
+                div.style.backgroundPosition = page.background.position || 'center';
+            }
+            page.articles.forEach(art => {
+                const el = document.createElement('div');
+                el.className = 'article ' + art.type;
+                el.style.left = art.x + 'px';
+                el.style.top = art.y + 'px';
+                el.style.width = art.w + 'px';
+                el.style.height = art.h + 'px';
+                el.style.zIndex = art.z || 1;
+                el.style.color = art.styles?.color || 'inherit';
+                el.style.backgroundColor = art.styles?.background || 'transparent';
+                if (art.styles?.fontFamily) el.style.fontFamily = art.styles.fontFamily;
+                if (art.styles?.fontSize) el.style.fontSize = art.styles.fontSize;
+                if (art.styles?.textAlign) el.style.textAlign = art.styles.textAlign;
+                
+                if (art.type === 'audio') {
+                    el.innerHTML = \`<div class="audio"><div class="itunes-top"><div class="itunes-artwork">\${art.coverUrl ? '<img src="' + art.coverUrl + '">' : ''}</div><div class="itunes-info"><div class="itunes-title">\${art.content?.title || 'Untitled'}</div><div class="itunes-artist">\${art.content?.artist || 'Unknown'}</div></div></div><audio controls src="\${art.audioData}"></audio></div>\`;
+                } else if (art.type === 'image' || art.type === 'gif') {
+                    el.innerHTML = '<img src="' + art.dataUrl + '" style="object-fit:' + (art.fitMode || 'cover') + ';">';
+                } else if (art.type === 'video') {
+                    if (art.videoType === 'file') {
+                        el.innerHTML = '<video src="' + art.content + '" style="width:100%;height:100%;object-fit:cover;" controls></video>';
+                    } else {
+                        el.innerHTML = '<iframe src="' + art.content + '" allowfullscreen></iframe>';
+                    }
+                } else {
+                    el.innerHTML = '<div class="text-content">' + art.content + '</div>';
+                    if (art.columns > 1) el.classList.add('columns-' + art.columns);
+                }
+                div.appendChild(el);
+            });
+            return div;
+        }
+        const container = document.getElementById('pages');
+        zine.pages.forEach((page, i) => {
+            container.appendChild(renderPage(page, i + 1));
+        });
+    <\/script>
+</body>
+</html>`;
+        return new Blob([html], {type: 'text/html'});
+    },
+    
+    async exportZineFile(zine) {
+        const files = {};
+        const manifest = { version: '1.0', title: zine.title, created: zine.created, modified: Date.now(), pages: zine.pages.length };
+        files['manifest.json'] = new TextEncoder().encode(JSON.stringify(manifest, null, 2));
+        files['state.json'] = new TextEncoder().encode(JSON.stringify(zine, null, 2));
+        const zipped = fflate.zipSync(files, { level: 6 });
+        return new Blob([zipped], {type: 'application/zip'});
+    },
+    
+    importZineFile(blob) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const unzipped = fflate.unzipSync(data);
+                    if (unzipped['state.json']) {
+                        const state = JSON.parse(new TextDecoder().decode(unzipped['state.json']));
+                        resolve(state);
+                    } else {
+                        reject(new Error('Invalid .zine file'));
+                    }
+                } catch (err) {
+                    reject(err);
+                }
+            };
+            reader.readAsArrayBuffer(blob);
+        });
+    }
+};
+
+window.app = app;
+window.zineManager = zineManager;
+window.articles = articles;
+window.layerManager = layerManager;
+window.fontManager = fontManager;
+
+window.addEventListener('load', () => app.init());
+</script>
+</body>
+</html>
